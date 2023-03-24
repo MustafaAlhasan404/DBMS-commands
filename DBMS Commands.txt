@@ -1,0 +1,491 @@
+drop table books; 
+
+drop table customers; 
+
+drop table Rent; 
+
+/***********q1-1*************/ 
+
+create table books  ( 
+
+b_name varchar(15), 
+
+prod_date date, 
+
+CONSTRAINT book_name PRIMARY KEY (b_name) 
+
+);   
+
+insert into books values('origins','05-FEB-06'); 
+
+insert into books values('harrypotter','10-FEB-06'); 
+
+insert into books values('thegodfather','05-FEB-08'); 
+
+/***********q1-2*************/ 
+
+CREATE TABLE customers( 
+
+c_id number(10) primary key, 
+
+c_mob_num number (20), 
+
+c_limit number (1) 
+
+); 
+
+insert into customers values(1010202050,0939393940,5); 
+
+insert into customers values(1010,0939393940,5); 
+
+insert into customers values(0101,0939393940,5); 
+
+/***********q1-3***************/ 
+
+create table Rent  ( 
+
+r_c_id number(10), 
+
+r_b_name varchar (15), 
+
+r_date date, 
+
+constraint id_FK foreign key (r_c_id) references customers(c_id), 
+
+constraint name_FK foreign key (r_b_name) references books(b_name) 
+
+); 
+
+insert into rent values(1010202050,'origins','06-FEB-06'); 
+
+insert into rent values(1010,'harrypotter','06-FEB-06'); 
+
+insert into rent values(0101,'thegodfather','06-FEB-06'); 
+
+/***********q2************/ 
+
+create or replace procedure rented_books as 
+
+CURSOR rent_c IS 
+
+SELECT r_b_name 
+
+FROM rent; 
+
+rent_c_name books.b_name%type; 
+
+rent_c_id customers.c_id%type; 
+
+rent_c_date Rent.r_date%type; 
+
+BEGIN 
+
+OPEN rent_c; 
+
+--open rent_c; 
+
+loop 
+
+FETCH rent_c INTO rent_c_name; 
+
+EXIT WHEN rent_c%NOTFOUND; 
+
+DBMS_OUTPUT.PUT_LINE(rent_c_name); 
+
+END loop; 
+
+CLOSE rent_c; 
+
+            exception  
+
+            when cursor_already_open then  
+
+            dbms_output.put_line('cursor "m_cur is already opened before fetch! '); 
+
+            close rent_c; 
+
+end; 
+
+/ 
+
+/***********q2-2*************/ 
+
+begin 
+
+rented_books; 
+
+end; 
+
+/ 
+
+/***********q3**************/ 
+
+create or replace function abbbility ( 
+
+in_c_id customers.c_id%type 
+
+,in_b_name books.b_name%type 
+
+)  
+
+return boolean 
+
+is 
+
+f_c_count customers.c_limit%type; 
+
+f_c_limit customers.c_limit%type; 
+
+f_b_name books.b_name%type; 
+
+f_c_id customers.c_id%type; 
+
+begin 
+
+select b_name into f_b_name 
+
+from books  
+
+where b_name= in_b_name; 
+
+ 
+
+select c_id into f_c_id 
+
+from customers  
+
+where c_id=in_c_id ; 
+
+ 
+
+select count(*) into f_c_count 
+
+from rent  
+
+where r_c_id=in_c_id ; 
+
+ 
+
+select c_limit into f_c_limit 
+
+from customers  
+
+where c_id=in_c_id ; 
+
+ 
+
+if (f_c_limit> f_c_count) then 
+
+RETURN true; 
+
+else 
+
+RETURN false; 
+
+end if; 
+
+ 
+
+exception 
+
+when no_data_found then 
+
+dbms_output.put_line('customer or book name not avalible'); 
+
+RETURN false; 
+
+end; 
+
+/ 
+
+/***********q4-aid***************/ 
+
+declare 
+
+num boolean; 
+
+begin  
+
+num:=abbbility(1010,'harrypotter'); 
+
+end; 
+
+/ 
+
+/***********q4-2****************/ 
+
+create or replace procedure hi (in_c_id customers.c_id%type,in_b_name books.b_name%type) 
+
+is 
+
+num boolean; 
+
+begin 
+
+num:=abbbility(in_c_id, in_b_name); 
+
+if (num = true) then 
+
+insert into rent 
+
+values (in_c_id,in_b_name,'06-FEB-06'); 
+
+dbms_output.put_line('completed'); 
+
+else 
+
+dbms_output.put_line('sorry'); 
+
+end if; 
+
+end; 
+
+/ 
+
+begin 
+
+hi(101,'origins'); -- inserted 
+
+end; 
+
+/ 
+
+/***********q5-1**************/ 
+
+--drop table data_of_edit 
+
+CREATE TABLE data_of_edit 
+
+( 
+
+  Data_TYPE VARCHAR(10), 
+
+  USERS VARCHAR(20), 
+
+  DATEOFOP DATE, 
+
+  OLDDATE DATE, 
+
+  NEWDATE DATE 
+
+) 
+
+/***********q5-2*************/ 
+
+drop trigger Edit_monotring; 
+
+  CREATE OR REPLACE TRIGGER Edit_monotring 
+
+  AFTER UPDATE OR DELETE ON Rent  
+
+  FOR EACH row  
+
+  DECLARE l_dml_type VARCHAR(10); 
+
+  BEGIN 
+
+    IF (updating) THEN 
+
+      l_dml_type := 'UPD'; 
+
+    ELSE 
+
+      l_dml_type := 'DEL'; 
+
+    END IF; 
+
+    INSERT INTO data_of_edit  
+
+    VALUES ( 
+
+        l_dml_type, 
+
+        USER, 
+
+        sysdate, 
+
+        :OLD.R_DATE, 
+
+        :NEW.R_DATE 
+
+      ); 
+
+  END; 
+
+  / 
+
+/***********q6***************/ 
+
+--dropalltablesfirst 
+
+update books 
+
+set b_name ='origins' 
+
+where b_name ='origins1'; 
+
+-- this statment return Exception FK -> TO SOLVE PROBLEM WRITE TRIGGER 
+
+ drop trigger trg_pk_b_name; 
+
+create or replace trigger trg_pk_b_name after update of b_name on books 
+
+for each row 
+
+begin 
+
+update rent set r_b_name = :NEW.b_name where r_b_name = :OLD.b_name;   --CHILD RECORD IN EMPLOYEES TABLE 
+
+end; 
+
+/ 
+
+/********************q7*********************/ -- callings 
+
+declare 
+
+bn1 VARCHAR(15):= '&enter_name_of_book'; -- name of book one 
+
+db1 date := '&enter_date_of_publish'; --dateofpublish of book one 
+
+c_id1 number (10) := &enter_the_customer_id; 
+
+c_phone1 number (20) := &enter_the_customer_phone_number; 
+
+c_limit_of_rent1 NUMBER(1) := &enter_the_customer_rent_limit; 
+
+r_date_of_return1 date := '&enter_date_of_return'; 
+
+ 
+
+bn2 VARCHAR(15):= '&enter_name_of_book'; -- name of book two  
+
+db2 date := '&enter_date_of_publish'; --dateofpublish of book two 
+
+c_id2 number (10) := &enter_the_customer_id; 
+
+c_phone2 number (20) := &enter_the_customer_phone_number; 
+
+c_limit_of_rent2 NUMBER(1) := &enter_the_customer_rent_limit; 
+
+r_date_of_return2 date := '&enter_date_of_return'; 
+
+/******************************************************************************/ 
+
+begin 
+
+insert into books values(bn1,db1); 
+
+insert into customers values(c_id1, c_phone1, c_limit_of_rent1); 
+
+insert into rent values(c_id1, bn1, r_date_of_return1); 
+
+/******************************************************************************/ 
+
+insert into books values(bn2,db2); 
+
+insert into customers values(c_id2, c_phone2, c_limit_of_rent2); 
+
+insert into rent values(c_id2, bn2, r_date_of_return2); 
+
+end; 
+
+/******************************************************************************/ 
+
+begin 
+
+rented_books; -- shows names of books 
+
+end; 
+
+/ 
+
+/******************************************************************************/ 
+
+declare 
+
+recod_1 data_of_edit%ROWTYPE; 
+
+begin 
+
+select * into recod_1 
+
+from data_of_edit; 
+
+dbms_output.put_line(recod_1.data_type || recod_1.users || recod_1.dateofop || recod_1.olddate || recod_1.newdate); -- shows names of books 
+
+end; 
+
+/ 
+
+/******************************************************************************/ 
+
+declare 
+
+CURSOR data_c IS 
+
+SELECT data_type,users,dateofop,olddate,newdate 
+
+FROM data_of_edit; 
+
+c_data_type    data_of_edit.data_type%type; 
+
+c_users        data_of_edit.users%type; 
+
+c_dateofop     data_of_edit.dateofop%type; 
+
+c_oldadate     data_of_edit.olddate%type; 
+
+c_newdate      data_of_edit.newdate%type; 
+
+BEGIN 
+
+OPEN data_c; 
+
+--open data_c; 
+
+loop 
+
+FETCH data_c INTO c_data_type,c_users,c_dateofop,c_oldadate,c_newdate; 
+
+EXIT WHEN data_c%NOTFOUND; 
+
+DBMS_OUTPUT.PUT_LINE(c_data_type||c_users||c_dateofop||c_oldadate||c_newdate); 
+
+END loop; 
+
+CLOSE data_c; 
+
+            exception  
+
+            when cursor_already_open then  
+
+            dbms_output.put_line('cursor "m_cur is already opened before fetch! '); 
+
+            close data_c; 
+
+end; 
+
+/ 
+
+/******************************************************************************/ 
+
+--drop all tables first 
+
+begin 
+
+update books 
+
+set b_name ='&enternewname' 
+
+where b_name ='&enteroldname'; 
+
+end; 
+
+/ 
+
+/******************************************************************************/ 
+
+end of project 
+
+done by student Mustafa_alhasany 
